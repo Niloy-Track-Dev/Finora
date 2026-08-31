@@ -1,0 +1,69 @@
+name: Build & Release Android APK
+
+on:
+  push:
+    branches: [ "**" ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ "**" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Setup Keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "Decoding release keystore from GitHub Secret..."
+            echo "$KEYSTORE_BASE64" | base64 -d > release.keystore
+            echo "KEYSTORE_PATH=$(pwd)/release.keystore" >> $GITHUB_ENV
+          else
+            echo "KEYSTORE_BASE64 secret not set. Generating temporary signing key for CI build..."
+            keytool -genkey -v -keystore release.keystore -storepass "${{ secrets.STORE_PASSWORD || 'android' }}" -alias "${{ secrets.KEY_ALIAS || 'upload' }}" -keypass "${{ secrets.KEY_PASSWORD || 'android' }}" -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Release Key,O=Android,C=US"
+            echo "KEYSTORE_PATH=$(pwd)/release.keystore" >> $GITHUB_ENV
+          fi
+
+      - name: Build Release APK
+        env:
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD || 'android' }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'upload' }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'android' }}
+        run: ./gradlew assembleRelease
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: app/build/outputs/apk/release/*.apk
+
+      - name: Create GitHub Release
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: app/build/outputs/apk/release/*.apk
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('release-{0}', github.sha) }}
+          name: ${{ github.ref_type == 'tag' && github.ref_name || format('Release {0}', github.sha) }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
