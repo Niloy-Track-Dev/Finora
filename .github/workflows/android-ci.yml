@@ -49,21 +49,24 @@ jobs:
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD || 'android' }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'upload' }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'android' }}
-        run: ./gradlew assembleRelease
+        run: |
+          ./gradlew assembleRelease
+          cd app/build/outputs/apk/release/
+          cp *.apk finora-v2.0.0.apk || true
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-release
-          path: app/build/outputs/apk/release/*.apk
+          name: finora-v2.0.0
+          path: app/build/outputs/apk/release/finora-v2.0.0.apk
 
       - name: Create GitHub Release
         if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
-          files: app/build/outputs/apk/release/*.apk
+          files: app/build/outputs/apk/release/finora-v2.0.0.apk
           tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('release-{0}', github.sha) }}
-          name: ${{ github.ref_type == 'tag' && github.ref_name || format('Release {0}', github.sha) }}
+          name: ${{ github.ref_type == 'tag' && github.ref_name || 'Finora V2.0.0' }}
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
