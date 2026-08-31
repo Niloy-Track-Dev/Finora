@@ -1,0 +1,6 @@
+{
+  "name": "Cash Tracker",
+  "description": "A production-grade offline household expense tracker for simple cash-based money management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
