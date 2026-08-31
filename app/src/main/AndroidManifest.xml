@@ -12,7 +12,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MyApplication">
         <activity
-            android:name=".MainActivity"
+            android:name="com.niloy.finora.MainActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.MyApplication">
@@ -25,7 +25,7 @@
 
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.aistudio.cashtrack.mvkpzl.fileprovider"
+            android:authorities="com.niloy.finora.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data
