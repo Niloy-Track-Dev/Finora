@@ -11,21 +11,18 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val LightColorScheme = lightColorScheme(
-    primary = TealPrimary,
-    onPrimary = SurfaceWhite,
-    primaryContainer = SkyBlueLight,
-    onPrimaryContainer = TealPrimaryDark,
-    secondary = BlueSecondary,
-    onSecondary = SurfaceWhite,
-    secondaryContainer = SurfaceVariantLight,
-    onSecondaryContainer = BlueSecondary,
-    tertiary = BlueAccent,
+    primary = PrimaryTeal,
+    onPrimary = OnPrimaryTeal,
+    primaryContainer = PrimaryTealContainer,
+    onPrimaryContainer = PrimaryTeal,
+    secondary = SecondaryMint,
     background = BackgroundLight,
     onBackground = TextPrimary,
-    surface = SurfaceWhite,
+    surface = SurfaceLight,
     onSurface = TextPrimary,
-    surfaceVariant = SurfaceVariantLight,
-    onSurfaceVariant = TextSecondary
+    surfaceVariant = BackgroundLight,
+    onSurfaceVariant = TextSecondary,
+    outline = BorderSubtle
 )
 
 @Composable
@@ -34,13 +31,14 @@ fun MyApplicationTheme(
     content: @Composable () -> Unit
 ) {
     val colorScheme = LightColorScheme
-
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
-            val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.background.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = true
+            val window = (view.context as? Activity)?.window
+            window?.let {
+                it.statusBarColor = colorScheme.background.toArgb()
+                WindowCompat.getInsetsController(it, view).isAppearanceLightStatusBars = true
+            }
         }
     }
 

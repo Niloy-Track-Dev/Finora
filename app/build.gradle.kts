@@ -23,16 +23,16 @@ android {
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
-
   signingConfigs {
     create("release") {
       val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
       val storePwd = System.getenv("STORE_PASSWORD")
-      if (!storePwd.isNullOrEmpty()) {
+      val keyPwd = System.getenv("KEY_PASSWORD") ?: storePwd
+      if (!storePwd.isNullOrEmpty() && !keyPwd.isNullOrEmpty()) {
         storeFile = file(keystorePath)
         storePassword = storePwd
         keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
-        keyPassword = System.getenv("KEY_PASSWORD") ?: storePwd
+        keyPassword = keyPwd
       } else {
         storeFile = file("${rootDir}/debug.keystore")
         storePassword = "android"
@@ -97,8 +97,6 @@ dependencies {
   implementation(libs.androidx.compose.material.icons.extended)
   implementation(libs.androidx.compose.material3)
   implementation(libs.androidx.compose.ui)
-  implementation(libs.androidx.appcompat)
-  implementation("androidx.biometric:biometric:1.2.0-alpha05")
   implementation(libs.androidx.compose.ui.graphics)
   implementation(libs.androidx.compose.ui.tooling.preview)
   implementation(libs.androidx.core.ktx)
