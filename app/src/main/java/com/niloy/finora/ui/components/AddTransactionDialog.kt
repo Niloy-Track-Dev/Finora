@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -52,7 +51,6 @@ fun AddTransactionDialog(
     var amountText by remember { mutableStateOf("") }
     var title by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf(categories.firstOrNull()?.name ?: "Others") }
-    var paymentMethod by remember { mutableStateOf("Cash") }
     var note by remember { mutableStateOf("") }
 
     val scrollState = rememberScrollState()
@@ -67,7 +65,7 @@ fun AddTransactionDialog(
                 .wrapContentHeight()
                 .padding(vertical = 24.dp),
             shape = RoundedCornerShape(28.dp),
-            color = SurfaceLight,
+            color = SurfaceWhite,
             tonalElevation = 8.dp
         ) {
             Column(
@@ -162,7 +160,7 @@ fun AddTransactionDialog(
                             .fillMaxWidth()
                             .testTag("dialog_amount_input"),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryTeal,
+                            focusedBorderColor = BluePrimary,
                             unfocusedBorderColor = BorderSubtle
                         )
                     )
@@ -199,7 +197,7 @@ fun AddTransactionDialog(
                             onClick = { selectedCategory = cat.name },
                             label = { Text(cat.name) },
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = PrimaryTeal,
+                                selectedContainerColor = BluePrimary,
                                 selectedLabelColor = Color.White
                             ),
                             shape = RoundedCornerShape(12.dp)

@@ -1,26 +1,24 @@
 package com.niloy.finora.ui.screens
 
-import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.niloy.finora.data.model.Transaction
 import com.niloy.finora.ui.theme.*
 import com.niloy.finora.ui.viewmodel.FinanceViewModel
 import java.text.SimpleDateFormat
@@ -28,31 +26,33 @@ import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TransactionsScreen(
+fun LogsScreen(
     viewModel: FinanceViewModel,
     modifier: Modifier = Modifier
 ) {
     val transactions by viewModel.allTransactions.collectAsStateWithLifecycle(initialValue = emptyList())
-    var searchQuery by remember { mutableStateOf("") }
-    var selectedFilter by remember { mutableStateOf("ALL") } // "ALL", "INCOME", "EXPENSE"
+    val categories by viewModel.allCategories.collectAsStateWithLifecycle(initialValue = emptyList())
 
-    val filteredTransactions = remember(transactions, searchQuery, selectedFilter) {
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedCategory by remember { mutableStateOf("All") }
+
+    val categoryList = remember(categories) {
+        listOf("All") + categories.map { it.name }
+    }
+
+    val filteredTransactions = remember(transactions, searchQuery, selectedCategory) {
         transactions.filter { tx ->
-            val matchesFilter = when (selectedFilter) {
-                "INCOME" -> tx.type == "RECEIVED"
-                "EXPENSE" -> tx.type != "RECEIVED"
-                else -> true
-            }
+            val matchesCategory = if (selectedCategory == "All") true else tx.category.equals(selectedCategory, ignoreCase = true)
             val matchesQuery = searchQuery.isEmpty() ||
                     tx.title.contains(searchQuery, ignoreCase = true) ||
                     tx.category.contains(searchQuery, ignoreCase = true) ||
-                    (tx.note.contains(searchQuery, ignoreCase = true))
+                    tx.note.contains(searchQuery, ignoreCase = true)
 
-            matchesFilter && matchesQuery
+            matchesCategory && matchesQuery
         }
     }
 
-    val groupedTransactions = remember(filteredTransactions) {
+    val groupedByDate = remember(filteredTransactions) {
         filteredTransactions.groupBy { tx ->
             SimpleDateFormat("EEEE, dd MMMM yyyy", Locale.getDefault()).format(Date(tx.date))
         }
@@ -67,7 +67,7 @@ fun TransactionsScreen(
     ) {
         Spacer(modifier = Modifier.height(8.dp))
 
-        // HEADER
+        // TITLE
         Text(
             text = "Transaction Records",
             style = MaterialTheme.typography.headlineSmall,
@@ -79,7 +79,7 @@ fun TransactionsScreen(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            placeholder = { Text("Search by title, category, or note...", color = TextMuted) },
+            placeholder = { Text("Search by title, note, or amount...", color = TextMuted) },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = TextMuted) },
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {
@@ -91,63 +91,38 @@ fun TransactionsScreen(
             singleLine = true,
             shape = RoundedCornerShape(16.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = SurfaceLight,
-                unfocusedContainerColor = SurfaceLight,
-                focusedBorderColor = PrimaryTeal,
+                focusedContainerColor = SurfaceWhite,
+                unfocusedContainerColor = SurfaceWhite,
+                focusedBorderColor = BluePrimary,
                 unfocusedBorderColor = BorderSubtle
             ),
             modifier = Modifier
                 .fillMaxWidth()
-                .testTag("search_transactions_input")
+                .testTag("logs_search_input")
         )
 
-        // FILTER CHIPS
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        // CATEGORIES SCROLLABLE ROW
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            FilterChip(
-                selected = selectedFilter == "ALL",
-                onClick = { selectedFilter = "ALL" },
-                label = { Text("All (${transactions.size})") },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = PrimaryTeal,
-                    selectedLabelColor = Color.White
-                ),
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            FilterChip(
-                selected = selectedFilter == "INCOME",
-                onClick = { selectedFilter = "INCOME" },
-                label = { Text("Income") },
-                leadingIcon = {
-                    Icon(Icons.Default.TrendingUp, contentDescription = null, modifier = Modifier.size(16.dp))
-                },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = IncomeGreen,
-                    selectedLabelColor = Color.White
-                ),
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            FilterChip(
-                selected = selectedFilter == "EXPENSE",
-                onClick = { selectedFilter = "EXPENSE" },
-                label = { Text("Expense") },
-                leadingIcon = {
-                    Icon(Icons.Default.TrendingDown, contentDescription = null, modifier = Modifier.size(16.dp))
-                },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = ExpenseRed,
-                    selectedLabelColor = Color.White
-                ),
-                shape = RoundedCornerShape(12.dp)
-            )
+            items(categoryList) { cat ->
+                val isSelected = cat == selectedCategory
+                FilterChip(
+                    selected = isSelected,
+                    onClick = { selectedCategory = cat },
+                    label = { Text(cat) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = BluePrimary,
+                        selectedLabelColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                )
+            }
         }
 
-        // TRANSACTION LIST
-        if (groupedTransactions.isEmpty()) {
+        // LOGS LIST
+        if (groupedByDate.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -155,17 +130,17 @@ fun TransactionsScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "No matching records found",
+                    text = "No records found for category: $selectedCategory",
                     style = MaterialTheme.typography.bodyMedium,
                     color = TextMuted
                 )
             }
         } else {
             LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
                 contentPadding = PaddingValues(bottom = 100.dp)
             ) {
-                groupedTransactions.forEach { (dateHeader, items) ->
+                groupedByDate.forEach { (dateHeader, items) ->
                     item {
                         Text(
                             text = dateHeader,
@@ -177,8 +152,9 @@ fun TransactionsScreen(
                     }
 
                     items(items, key = { it.id }) { tx ->
-                        TransactionCardItem(
+                        TransactionItemCard(
                             transaction = tx,
+                            isAmountVisible = true,
                             onDelete = { viewModel.deleteTransaction(tx) }
                         )
                     }

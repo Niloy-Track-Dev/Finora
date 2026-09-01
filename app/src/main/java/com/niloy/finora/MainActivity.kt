@@ -23,8 +23,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.niloy.finora.ui.components.AddTransactionDialog
 import com.niloy.finora.ui.screens.*
+import com.niloy.finora.ui.theme.BluePrimary
 import com.niloy.finora.ui.theme.MyApplicationTheme
-import com.niloy.finora.ui.theme.PrimaryTeal
 import com.niloy.finora.ui.viewmodel.FinanceViewModel
 
 class MainActivity : FragmentActivity() {
@@ -88,17 +88,17 @@ fun MainAppContent(
             ) {
                 NavigationBar(
                     containerColor = Color.White,
-                    tonalElevation = 8.dp,
+                    tonalElevation = 10.dp,
                     modifier = Modifier.testTag("bottom_nav_bar")
                 ) {
                     NavigationBarItem(
                         selected = selectedTab == 0,
                         onClick = { selectedTab = 0 },
-                        icon = { Icon(Icons.Default.Dashboard, contentDescription = "Dashboard") },
+                        icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
                         label = { Text("Home") },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = PrimaryTeal,
-                            selectedTextColor = PrimaryTeal,
+                            selectedIconColor = BluePrimary,
+                            selectedTextColor = BluePrimary,
                             indicatorColor = MaterialTheme.colorScheme.primaryContainer
                         ),
                         modifier = Modifier.testTag("nav_home_tab")
@@ -106,56 +106,56 @@ fun MainAppContent(
                     NavigationBarItem(
                         selected = selectedTab == 1,
                         onClick = { selectedTab = 1 },
-                        icon = { Icon(Icons.Default.ReceiptLong, contentDescription = "Transactions") },
+                        icon = { Icon(Icons.Default.Analytics, contentDescription = "Analytics") },
+                        label = { Text("Analytics") },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = BluePrimary,
+                            selectedTextColor = BluePrimary,
+                            indicatorColor = MaterialTheme.colorScheme.primaryContainer
+                        ),
+                        modifier = Modifier.testTag("nav_analytics_tab")
+                    )
+                    NavigationBarItem(
+                        selected = selectedTab == 2,
+                        onClick = { selectedTab = 2 },
+                        icon = { Icon(Icons.Default.ReceiptLong, contentDescription = "Logs") },
                         label = { Text("Logs") },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = PrimaryTeal,
-                            selectedTextColor = PrimaryTeal,
+                            selectedIconColor = BluePrimary,
+                            selectedTextColor = BluePrimary,
                             indicatorColor = MaterialTheme.colorScheme.primaryContainer
                         ),
                         modifier = Modifier.testTag("nav_logs_tab")
                     )
                     NavigationBarItem(
-                        selected = selectedTab == 2,
-                        onClick = { selectedTab = 2 },
-                        icon = { Icon(Icons.Default.PieChart, contentDescription = "Analytics") },
-                        label = { Text("Reports") },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = PrimaryTeal,
-                            selectedTextColor = PrimaryTeal,
-                            indicatorColor = MaterialTheme.colorScheme.primaryContainer
-                        ),
-                        modifier = Modifier.testTag("nav_reports_tab")
-                    )
-                    NavigationBarItem(
                         selected = selectedTab == 3,
                         onClick = { selectedTab = 3 },
-                        icon = { Icon(Icons.Default.CalendarMonth, contentDescription = "Calendar") },
-                        label = { Text("Calendar") },
+                        icon = { Icon(Icons.Default.ShowChart, contentDescription = "Track") },
+                        label = { Text("Track") },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = PrimaryTeal,
-                            selectedTextColor = PrimaryTeal,
+                            selectedIconColor = BluePrimary,
+                            selectedTextColor = BluePrimary,
                             indicatorColor = MaterialTheme.colorScheme.primaryContainer
                         ),
-                        modifier = Modifier.testTag("nav_calendar_tab")
+                        modifier = Modifier.testTag("nav_track_tab")
                     )
                     NavigationBarItem(
                         selected = selectedTab == 4,
                         onClick = { selectedTab = 4 },
-                        icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
-                        label = { Text("Settings") },
+                        icon = { Icon(Icons.Default.Settings, contentDescription = "Setting") },
+                        label = { Text("Setting") },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = PrimaryTeal,
-                            selectedTextColor = PrimaryTeal,
+                            selectedIconColor = BluePrimary,
+                            selectedTextColor = BluePrimary,
                             indicatorColor = MaterialTheme.colorScheme.primaryContainer
                         ),
-                        modifier = Modifier.testTag("nav_settings_tab")
+                        modifier = Modifier.testTag("nav_setting_tab")
                     )
                 }
             }
         },
         floatingActionButton = {
-            if (selectedTab == 0 || selectedTab == 1) {
+            if (selectedTab == 0 || selectedTab == 2) {
                 AnimatedVisibility(
                     visible = isBottomBarVisible,
                     enter = fadeIn() + scaleIn(),
@@ -163,11 +163,11 @@ fun MainAppContent(
                 ) {
                     FloatingActionButton(
                         onClick = { showAddDialog = true },
-                        containerColor = PrimaryTeal,
+                        containerColor = BluePrimary,
                         contentColor = Color.White,
                         modifier = Modifier.testTag("fab_add_transaction")
                     ) {
-                        Icon(imageVector = Icons.Default.Add, contentDescription = "Add cash movement", modifier = Modifier.size(24.dp))
+                        Icon(imageVector = Icons.Default.Add, contentDescription = "Add Entry", modifier = Modifier.size(24.dp))
                     }
                 }
             }
@@ -185,10 +185,10 @@ fun MainAppContent(
                     viewModel = viewModel,
                     onAddTransactionClick = { showAddDialog = true }
                 )
-                1 -> TransactionsScreen(viewModel = viewModel)
-                2 -> AnalyticsScreen(viewModel = viewModel)
-                3 -> CalendarScreen(viewModel = viewModel)
-                4 -> MoreScreen(viewModel = viewModel)
+                1 -> AnalyticsScreen(viewModel = viewModel)
+                2 -> LogsScreen(viewModel = viewModel)
+                3 -> TrackScreen(viewModel = viewModel)
+                4 -> SettingsScreen(viewModel = viewModel)
             }
         }
 
