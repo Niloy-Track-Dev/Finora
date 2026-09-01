@@ -24,7 +24,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.niloy.finora.ui.components.AddTransactionDialog
 import com.niloy.finora.ui.screens.*
 import com.niloy.finora.ui.theme.MyApplicationTheme
-import com.niloy.finora.ui.theme.TealPrimary
+import com.niloy.finora.ui.theme.PrimaryTeal
 import com.niloy.finora.ui.viewmodel.FinanceViewModel
 
 class MainActivity : FragmentActivity() {
@@ -64,15 +64,12 @@ fun MainAppContent(
     var showAddDialog by remember { mutableStateOf(false) }
     var isBottomBarVisible by remember { mutableStateOf(true) }
 
-    // Scroll listener for hiding / showing bottom navigation bar on scroll
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 if (available.y < -8) {
-                    // Scrolling down -> hide navbar
                     if (isBottomBarVisible) isBottomBarVisible = false
                 } else if (available.y > 8) {
-                    // Scrolling up -> show navbar
                     if (!isBottomBarVisible) isBottomBarVisible = true
                 }
                 return Offset.Zero
@@ -80,7 +77,7 @@ fun MainAppContent(
         }
     }
 
-    val categories by viewModel.allCategories.collectAsStateWithLifecycle()
+    val categories by viewModel.allCategories.collectAsStateWithLifecycle(initialValue = emptyList())
 
     Scaffold(
         bottomBar = {
@@ -100,8 +97,8 @@ fun MainAppContent(
                         icon = { Icon(Icons.Default.Dashboard, contentDescription = "Dashboard") },
                         label = { Text("Home") },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = TealPrimary,
-                            selectedTextColor = TealPrimary,
+                            selectedIconColor = PrimaryTeal,
+                            selectedTextColor = PrimaryTeal,
                             indicatorColor = MaterialTheme.colorScheme.primaryContainer
                         ),
                         modifier = Modifier.testTag("nav_home_tab")
@@ -112,8 +109,8 @@ fun MainAppContent(
                         icon = { Icon(Icons.Default.ReceiptLong, contentDescription = "Transactions") },
                         label = { Text("Logs") },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = TealPrimary,
-                            selectedTextColor = TealPrimary,
+                            selectedIconColor = PrimaryTeal,
+                            selectedTextColor = PrimaryTeal,
                             indicatorColor = MaterialTheme.colorScheme.primaryContainer
                         ),
                         modifier = Modifier.testTag("nav_logs_tab")
@@ -124,8 +121,8 @@ fun MainAppContent(
                         icon = { Icon(Icons.Default.PieChart, contentDescription = "Analytics") },
                         label = { Text("Reports") },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = TealPrimary,
-                            selectedTextColor = TealPrimary,
+                            selectedIconColor = PrimaryTeal,
+                            selectedTextColor = PrimaryTeal,
                             indicatorColor = MaterialTheme.colorScheme.primaryContainer
                         ),
                         modifier = Modifier.testTag("nav_reports_tab")
@@ -136,8 +133,8 @@ fun MainAppContent(
                         icon = { Icon(Icons.Default.CalendarMonth, contentDescription = "Calendar") },
                         label = { Text("Calendar") },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = TealPrimary,
-                            selectedTextColor = TealPrimary,
+                            selectedIconColor = PrimaryTeal,
+                            selectedTextColor = PrimaryTeal,
                             indicatorColor = MaterialTheme.colorScheme.primaryContainer
                         ),
                         modifier = Modifier.testTag("nav_calendar_tab")
@@ -148,8 +145,8 @@ fun MainAppContent(
                         icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
                         label = { Text("Settings") },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = TealPrimary,
-                            selectedTextColor = TealPrimary,
+                            selectedIconColor = PrimaryTeal,
+                            selectedTextColor = PrimaryTeal,
                             indicatorColor = MaterialTheme.colorScheme.primaryContainer
                         ),
                         modifier = Modifier.testTag("nav_settings_tab")
@@ -166,7 +163,7 @@ fun MainAppContent(
                 ) {
                     FloatingActionButton(
                         onClick = { showAddDialog = true },
-                        containerColor = TealPrimary,
+                        containerColor = PrimaryTeal,
                         contentColor = Color.White,
                         modifier = Modifier.testTag("fab_add_transaction")
                     ) {
