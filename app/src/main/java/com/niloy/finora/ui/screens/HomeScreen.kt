@@ -1,26 +1,24 @@
 package com.niloy.finora.ui.screens
 
 import androidx.compose.animation.*
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -41,29 +39,70 @@ fun HomeScreen(
     modifier: Modifier = Modifier
 ) {
     val transactions by viewModel.allTransactions.collectAsStateWithLifecycle(initialValue = emptyList())
-    val categories by viewModel.allCategories.collectAsStateWithLifecycle(initialValue = emptyList())
+    val isBalanceHidden by viewModel.isBalanceHidden.collectAsStateWithLifecycle(initialValue = false)
 
+    // Calculate Bank & Cash positions
+    val bankIncome = remember(transactions) {
+        transactions.filter { it.type == "RECEIVED" && (!it.bankName.isNullOrBlank() || it.paymentMethod == "Bank") }.sumOf { it.amount }
+    }
+    val withdrawnCash = remember(transactions) {
+        transactions.filter { it.type == "WITHDRAWAL" }.sumOf { it.amount }
+    }
     val totalIncome = remember(transactions) {
         transactions.filter { it.type == "RECEIVED" }.sumOf { it.amount }
     }
     val totalExpense = remember(transactions) {
-        transactions.filter { it.type != "RECEIVED" }.sumOf { it.amount }
+        transactions.filter { it.type == "EXPENSE" }.sumOf { it.amount }
     }
-    val totalBalance = totalIncome - totalExpense
+    val bankBalance = bankIncome - withdrawnCash
+
+    val cashReceivedDirectly = remember(transactions) {
+        transactions.filter { it.type == "RECEIVED" && (it.bankName.isNullOrBlank() && it.paymentMethod == "Cash") }.sumOf { it.amount }
+    }
+    val cashExpense = remember(transactions) {
+        transactions.filter { it.type == "EXPENSE" && it.paymentMethod == "Cash" }.sumOf { it.amount }
+    }
+    val cashInHand = withdrawnCash + cashReceivedDirectly - cashExpense
+    val netBalance = totalIncome - totalExpense
+
+    // Today's Expense
+    val todayExpense = remember(transactions) {
+        val cal = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val startMs = cal.timeInMillis
+        transactions.filter { it.type == "EXPENSE" && it.date >= startMs }.sumOf { it.amount }
+    }
+
+    // This Month's Expense
+    val thisMonthExpense = remember(transactions) {
+        val cal = Calendar.getInstance().apply {
+            set(Calendar.DAY_OF_MONTH, 1)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val startMs = cal.timeInMillis
+        transactions.filter { it.type == "EXPENSE" && it.date >= startMs }.sumOf { it.amount }
+    }
 
     val recentTransactions = remember(transactions) {
-        transactions.take(8)
+        transactions.take(5)
     }
 
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
             .background(BackgroundLight)
-            .padding(horizontal = 20.dp),
-        contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
+            .padding(horizontal = 24.dp),
+        contentPadding = PaddingValues(top = 28.dp, bottom = 100.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        // TOP HEADER
+        // TOP GREETING HEADER
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -72,161 +111,361 @@ fun HomeScreen(
             ) {
                 Column {
                     Text(
-                        text = "Hello, Niloy 👋",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        text = "Assalamu Alaikum",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextMuted,
+                        letterSpacing = 0.5.sp
                     )
                     Text(
-                        text = "Your financial pulse today",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary
+                        text = "Mother's Ledger",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Black,
+                        color = TextPrimary
                     )
                 }
 
-                Box(
+                // Invisible Toggle Button
+                IconButton(
+                    onClick = { viewModel.setBalanceHidden(!isBalanceHidden) },
                     modifier = Modifier
-                        .size(44.dp)
+                        .size(40.dp)
                         .clip(CircleShape)
-                        .background(PrimaryTealContainer)
-                        .clickable { },
-                    contentAlignment = Alignment.Center
+                        .background(Color.White)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.AccountBalanceWallet,
-                        contentDescription = "Wallet",
-                        tint = PrimaryTeal,
-                        modifier = Modifier.size(22.dp)
+                        imageVector = if (isBalanceHidden) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                        contentDescription = "Toggle Balance",
+                        tint = TextSecondary,
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }
         }
 
-        // HERO BALANCE CARD
+        // PREMIUM INTELLECTUAL BALANCE STACK (No cards, high visual prominence)
         item {
-            Card(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .shadow(12.dp, shape = RoundedCornerShape(24.dp), spotColor = PrimaryTeal.copy(alpha = 0.25f)),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+                    .padding(vertical = 12.dp)
             ) {
+                Text(
+                    text = "Tracked Cash",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextMuted,
+                    letterSpacing = 0.5.sp
+                )
+                
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Text(
+                    text = if (isBalanceHidden) "••••••" else formatCurrency(netBalance),
+                    fontSize = 42.sp,
+                    fontWeight = FontWeight.Black,
+                    color = TextPrimary,
+                    modifier = Modifier.testTag("home_total_balance")
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .clip(CircleShape)
+                            .background(PrimaryTeal)
+                    )
+                    Text(
+                        text = "This Month",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextMuted
+                    )
+                    Text(
+                        text = if (isBalanceHidden) "••••" else "${formatCurrency(thisMonthExpense)} spent",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = ExpenseRed
+                    )
+                }
+            }
+        }
+
+        // THREE-WAY BALANCES ROW (Bank, Cash In Hand, Today's Spent)
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color.White)
+                    .border(BorderStroke(0.5.dp, BorderSubtle), RoundedCornerShape(16.dp))
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Bank
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Bank Account", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextMuted)
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = if (isBalanceHidden) "••••" else formatCurrency(bankBalance),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Black,
+                        color = AccentBlue
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(30.dp)
+                        .background(BorderSubtle)
+                )
+
+                // Cash in hand
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = 12.dp)
+                ) {
+                    Text("Cash in Hand", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextMuted)
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = if (isBalanceHidden) "••••" else formatCurrency(cashInHand),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Black,
+                        color = PrimaryTeal
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(30.dp)
+                        .background(BorderSubtle)
+                )
+
+                // Today spent
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = 12.dp)
+                ) {
+                    Text("Today's Spent", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextMuted)
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = if (isBalanceHidden) "••••" else formatCurrency(todayExpense),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Black,
+                        color = ExpenseRed
+                    )
+                }
+            }
+        }
+
+        // SPENDING OVERVIEW (SMOOTH BEZIER SPARKLINE)
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Color.White)
+                    .border(BorderStroke(0.5.dp, BorderSubtle), RoundedCornerShape(20.dp))
+                    .padding(18.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Spending Trend",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = "Household spent curve (Last 7 Days)",
+                            fontSize = 11.sp,
+                            color = TextMuted
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(PrimaryTealContainer)
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "WEEKLY FLOW",
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Black,
+                            color = PrimaryTeal
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Points for Trend Curve
+                val points = remember(transactions) {
+                    val last7Days = (0..6).map { dayOffset ->
+                        val checkCal = Calendar.getInstance().apply {
+                            add(Calendar.DAY_OF_YEAR, -dayOffset)
+                            set(Calendar.HOUR_OF_DAY, 0)
+                            set(Calendar.MINUTE, 0)
+                            set(Calendar.SECOND, 0)
+                            set(Calendar.MILLISECOND, 0)
+                        }
+                        val startMs = checkCal.timeInMillis
+                        checkCal.set(Calendar.HOUR_OF_DAY, 23)
+                        checkCal.set(Calendar.MINUTE, 59)
+                        checkCal.set(Calendar.SECOND, 59)
+                        val endMs = checkCal.timeInMillis
+
+                        val dayTotal = transactions
+                            .filter { it.type == "EXPENSE" && it.date in startMs..endMs }
+                            .sumOf { it.amount }
+                        dayTotal.toFloat()
+                    }.reversed()
+                    last7Days
+                }
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(
-                            brush = Brush.linearGradient(
-                                colors = listOf(Color(0xFF0F766E), Color(0xFF042F2C))
-                            )
-                        )
-                        .padding(24.dp)
+                        .height(100.dp)
+                        .padding(vertical = 4.dp)
                 ) {
-                    Column {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Total Net Balance",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.White.copy(alpha = 0.8f)
-                            )
-                            Surface(
-                                color = Color.White.copy(alpha = 0.15f),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Text(
-                                    text = "Finora Wallet",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = Color.White,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                                )
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        val width = size.width
+                        val height = size.height
+                        val maxVal = (points.maxOrNull() ?: 100f).coerceAtLeast(100f)
+
+                        val path = Path()
+                        val fillPath = Path()
+                        val stepX = width / (points.size - 1).coerceAtLeast(1)
+
+                        points.forEachIndexed { index, value ->
+                            val x = index * stepX
+                            val y = height - (value / maxVal * (height * 0.8f)) - (height * 0.05f)
+
+                            if (index == 0) {
+                                path.moveTo(x, y)
+                                fillPath.moveTo(x, height)
+                                fillPath.lineTo(x, y)
+                            } else {
+                                val prevX = (index - 1) * stepX
+                                val prevY = height - (points[index - 1] / maxVal * (height * 0.8f)) - (height * 0.05f)
+
+                                val controlX1 = prevX + (stepX / 2f)
+                                val controlY1 = prevY
+                                val controlX2 = prevX + (stepX / 2f)
+                                val controlY2 = y
+
+                                path.cubicTo(controlX1, controlY1, controlX2, controlY2, x, y)
+                                fillPath.cubicTo(controlX1, controlY1, controlX2, controlY2, x, y)
+                            }
+
+                            if (index == points.size - 1) {
+                                fillPath.lineTo(x, height)
+                                fillPath.close()
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        Text(
-                            text = formatCurrency(totalBalance),
-                            fontSize = 32.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Color.White,
-                            modifier = Modifier.testTag("home_total_balance")
+                        // Gradient Area Fill under path
+                        drawPath(
+                            path = fillPath,
+                            brush = Brush.verticalGradient(
+                                colors = listOf(PrimaryTealLight.copy(alpha = 0.15f), Color.Transparent)
+                            )
                         )
 
-                        Spacer(modifier = Modifier.height(24.dp))
+                        // Draw smooth line
+                        drawPath(
+                            path = path,
+                            color = PrimaryTeal,
+                            style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round)
+                        )
 
-                        // Income / Expense Stats
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            // Income Pill
-                            StatPill(
-                                title = "Income",
-                                amount = totalIncome,
-                                isIncome = true,
-                                modifier = Modifier.weight(1f)
-                            )
+                        // Highlight dots
+                        points.forEachIndexed { index, value ->
+                            val x = index * stepX
+                            val y = height - (value / maxVal * (height * 0.8f)) - (height * 0.05f)
 
-                            // Expense Pill
-                            StatPill(
-                                title = "Expense",
-                                amount = totalExpense,
-                                isIncome = false,
-                                modifier = Modifier.weight(1f)
-                            )
+                            if (value > 0f) {
+                                drawCircle(
+                                    color = Color.White,
+                                    radius = 3.5.dp.toPx(),
+                                    center = Offset(x, y)
+                                )
+                                drawCircle(
+                                    color = PrimaryTeal,
+                                    radius = 2.dp.toPx(),
+                                    center = Offset(x, y)
+                                )
+                            }
                         }
                     }
                 }
-            }
-        }
 
-        // QUICK ACTIONS
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    text = "Quick Actions",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
+                Spacer(modifier = Modifier.height(8.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    QuickActionButton(
-                        icon = Icons.Default.Add,
-                        label = "Add Entry",
-                        bgColor = PrimaryTealContainer,
-                        iconTint = PrimaryTeal,
-                        onClick = onAddTransactionClick
-                    )
-                    QuickActionButton(
-                        icon = Icons.Default.TrendingUp,
-                        label = "Income",
-                        bgColor = IncomeBg,
-                        iconTint = IncomeGreen,
-                        onClick = onAddTransactionClick
-                    )
-                    QuickActionButton(
-                        icon = Icons.Default.TrendingDown,
-                        label = "Expense",
-                        bgColor = ExpenseBg,
-                        iconTint = ExpenseRed,
-                        onClick = onAddTransactionClick
-                    )
-                    QuickActionButton(
-                        icon = Icons.Default.Analytics,
-                        label = "Reports",
-                        bgColor = Color(0xFFF0FDF4),
-                        iconTint = Color(0xFF16A34A),
-                        onClick = {}
-                    )
+                    val sdf = SimpleDateFormat("EEE", Locale.getDefault())
+                    val weekdays = (0..6).map { dayOffset ->
+                        val c = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -dayOffset) }
+                        sdf.format(c.time)
+                    }.reversed()
+
+                    weekdays.forEach { dayName ->
+                        Text(
+                            text = dayName,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextMuted
+                        )
+                    }
                 }
+            }
+        }
+
+        // QUICK ADD SHORTCUT
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color.White)
+                    .border(BorderStroke(0.5.dp, BorderSubtle), RoundedCornerShape(16.dp))
+                    .clickable { onAddTransactionClick() }
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Add Entry",
+                    tint = PrimaryTeal,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Record Cash Ledger Entry",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = PrimaryTeal
+                )
             }
         }
 
@@ -239,14 +478,17 @@ fun HomeScreen(
             ) {
                 Text(
                     text = "Recent Transactions",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Black,
                     color = TextPrimary
                 )
+                
                 Text(
-                    text = "${transactions.size} Entries",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextMuted
+                    text = "See Logs",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = PrimaryTeal,
+                    modifier = Modifier.clickable { /* Handled via bottom bar tab selection */ }
                 )
             }
         }
@@ -267,222 +509,202 @@ fun HomeScreen(
 }
 
 @Composable
-fun StatPill(
-    title: String,
-    amount: Double,
-    isIncome: Boolean,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        modifier = modifier,
-        color = Color.White.copy(alpha = 0.12f),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .background(if (isIncome) IncomeGreen.copy(alpha = 0.2f) else ExpenseRed.copy(alpha = 0.2f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = if (isIncome) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
-                    contentDescription = title,
-                    tint = if (isIncome) IncomeGreen else ExpenseRed,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-
-            Column {
-                Text(
-                    text = title,
-                    fontSize = 11.sp,
-                    color = Color.White.copy(alpha = 0.7f)
-                )
-                Text(
-                    text = formatCurrency(amount),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun QuickActionButton(
-    icon: ImageVector,
-    label: String,
-    bgColor: Color,
-    iconTint: Color,
-    onClick: () -> Unit
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(56.dp)
-                .clip(RoundedCornerShape(18.dp))
-                .background(bgColor)
-                .clickable { onClick() },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = iconTint,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-        Text(
-            text = label,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
-            color = TextSecondary
-        )
-    }
-}
-
-@Composable
 fun TransactionCardItem(
     transaction: Transaction,
     onDelete: () -> Unit
 ) {
     val isIncome = transaction.type == "RECEIVED"
+    val isWithdrawal = transaction.type == "WITHDRAWAL"
+
     val dateString = remember(transaction.date) {
         SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault()).format(Date(transaction.date))
     }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceLight),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    val categoryIcon = remember(transaction.category, transaction.type) {
+        when {
+            isIncome -> Icons.Default.CallReceived
+            isWithdrawal -> Icons.Default.AccountBalanceWallet
+            else -> {
+                val catLower = transaction.category.lowercase()
+                when {
+                    catLower.contains("grocery") || catLower.contains("bazar") || catLower.contains("food") -> Icons.Default.Restaurant
+                    catLower.contains("medicine") || catLower.contains("doctor") || catLower.contains("health") -> Icons.Default.LocalHospital
+                    catLower.contains("bill") || catLower.contains("utilities") || catLower.contains("rent") -> Icons.Default.Receipt
+                    catLower.contains("cloth") || catLower.contains("shopping") -> Icons.Default.Checkroom
+                    catLower.contains("gift") -> Icons.Default.Redeem
+                    else -> Icons.Default.Category
+                }
+            }
+        }
+    }
+
+    val iconContainerColor = remember(transaction.type) {
+        when {
+            isIncome -> IncomeBg
+            isWithdrawal -> Color(0xFFEFF6FF)
+            else -> ExpenseBg
+        }
+    }
+
+    val iconTintColor = remember(transaction.type) {
+        when {
+            isIncome -> IncomeGreen
+            isWithdrawal -> AccentBlue
+            else -> ExpenseRed
+        }
+    }
+
+    // Borderless beautiful transaction row
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White)
+            .border(BorderStroke(0.5.dp, BorderSubtle), RoundedCornerShape(16.dp))
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.weight(1f)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                modifier = Modifier.weight(1f)
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(iconContainerColor),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(if (isIncome) IncomeBg else ExpenseBg),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = if (isIncome) Icons.Default.CallReceived else Icons.Default.CallMade,
-                        contentDescription = transaction.type,
-                        tint = if (isIncome) IncomeGreen else ExpenseRed,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+                Icon(
+                    imageVector = categoryIcon,
+                    contentDescription = null,
+                    tint = iconTintColor,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
 
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                Text(
+                    text = transaction.title.ifEmpty {
+                        if (isIncome) "Income Received" else if (isWithdrawal) "Cash Withdrawal" else "Expense"
+                    },
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
                     Text(
-                        text = transaction.title.ifEmpty { if (isIncome) "Income" else "Expense" },
-                        style = MaterialTheme.typography.titleMedium,
+                        text = transaction.category,
+                        fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        color = TextMuted
                     )
                     Text(
-                        text = "${transaction.category} • $dateString",
-                        style = MaterialTheme.typography.bodySmall,
+                        text = "•",
+                        fontSize = 10.sp,
+                        color = TextMuted
+                    )
+                    Text(
+                        text = dateString,
+                        fontSize = 10.sp,
                         color = TextMuted
                     )
                 }
             }
+        }
 
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    text = "${if (isIncome) "+" else "-"} ${formatCurrency(transaction.amount)}",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isIncome) IncomeGreen else ExpenseRed
-                )
-
-                Text(
-                    text = transaction.paymentMethod,
-                    fontSize = 11.sp,
-                    color = TextMuted
-                )
+        Column(horizontalAlignment = Alignment.End) {
+            val sign = when {
+                isIncome -> "+"
+                isWithdrawal -> "⇄"
+                else -> "-"
             }
+            val amountColor = when {
+                isIncome -> IncomeGreen
+                isWithdrawal -> AccentBlue
+                else -> ExpenseRed
+            }
+            Text(
+                text = "$sign ${formatCurrency(transaction.amount)}",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Black,
+                color = amountColor
+            )
+
+            Text(
+                text = transaction.paymentMethod,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextMuted
+            )
         }
     }
 }
 
 @Composable
 fun EmptyStateCard(onAddClick: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceLight)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color.White)
+            .border(BorderStroke(0.5.dp, BorderSubtle), RoundedCornerShape(20.dp))
+            .padding(28.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Column(
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(PrimaryTealContainer),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(PrimaryTealContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ReceiptLong,
-                    contentDescription = "Empty",
-                    tint = PrimaryTeal,
-                    modifier = Modifier.size(28.dp)
-                )
-            }
+            Icon(
+                imageVector = Icons.Default.ReceiptLong,
+                contentDescription = null,
+                tint = PrimaryTeal,
+                modifier = Modifier.size(24.dp)
+            )
+        }
 
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
-                text = "No Transactions Yet",
-                style = MaterialTheme.typography.titleMedium,
+                text = "No Cash Movements Yet",
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = TextPrimary
             )
-
             Text(
-                text = "Start tracking your income and expenses effortlessly.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondary
+                text = "Track your family spending and cash in hand easily.",
+                fontSize = 11.sp,
+                color = TextSecondary,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
+        }
 
-            Button(
-                onClick = onAddClick,
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text("Add Your First Entry")
-            }
+        Button(
+            onClick = onAddClick,
+            colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal),
+            shape = RoundedCornerShape(12.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.height(38.dp)
+        ) {
+            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("Add Your First Entry", fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
 
 fun formatCurrency(amount: Double): String {
-    val formatter = NumberFormat.getCurrencyInstance(Locale("en", "BD"))
-    return "৳ " + String.format(Locale.US, "%,.2f", amount)
+    return "৳" + String.format(Locale.US, "%,.2f", amount)
 }

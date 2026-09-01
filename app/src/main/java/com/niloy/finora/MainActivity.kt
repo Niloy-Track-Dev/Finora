@@ -5,6 +5,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -23,8 +25,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.niloy.finora.ui.components.AddTransactionDialog
 import com.niloy.finora.ui.screens.*
-import com.niloy.finora.ui.theme.MyApplicationTheme
-import com.niloy.finora.ui.theme.PrimaryTeal
+import com.niloy.finora.ui.theme.*
 import com.niloy.finora.ui.viewmodel.FinanceViewModel
 
 class MainActivity : FragmentActivity() {
@@ -88,8 +89,10 @@ fun MainAppContent(
             ) {
                 NavigationBar(
                     containerColor = Color.White,
-                    tonalElevation = 8.dp,
-                    modifier = Modifier.testTag("bottom_nav_bar")
+                    tonalElevation = 0.dp,
+                    modifier = Modifier
+                        .border(BorderStroke(0.5.dp, BorderSubtle.copy(alpha = 0.6f)))
+                        .testTag("bottom_nav_bar")
                 ) {
                     NavigationBarItem(
                         selected = selectedTab == 0,
