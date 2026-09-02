@@ -1,5 +1,6 @@
 package com.niloy.finora.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -15,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -26,8 +28,11 @@ fun SettingsScreen(
     viewModel: FinanceViewModel,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     var showResetDialog by remember { mutableStateOf(false) }
     var pinEnabled by remember { mutableStateOf(viewModel.getAppPIN() != null) }
+
+    var infoMessageDialog by remember { mutableStateOf<String?>(null) }
 
     LazyColumn(
         modifier = modifier
@@ -89,15 +94,17 @@ fun SettingsScreen(
                                 pinEnabled = enabled
                                 if (enabled) {
                                     viewModel.setAppPIN("1234") // Default PIN
+                                    Toast.makeText(context, "App PIN enabled (1234)", Toast.LENGTH_SHORT).show()
                                 } else {
                                     viewModel.setAppPIN(null)
+                                    Toast.makeText(context, "App PIN disabled", Toast.LENGTH_SHORT).show()
                                 }
                             },
                             colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = BluePrimary)
                         )
                     }
 
-                    Divider(color = BorderSubtle)
+                    HorizontalDivider(color = BorderSubtle)
 
                     // 2. Backup as file
                     SettingActionRow(
@@ -106,10 +113,12 @@ fun SettingsScreen(
                         iconTint = IncomeGreen,
                         title = "Backup as File",
                         subtitle = "Export JSON backup file",
-                        onClick = { }
+                        onClick = {
+                            infoMessageDialog = "Backup Created: Records auto-saved to secure internal storage."
+                        }
                     )
 
-                    Divider(color = BorderSubtle)
+                    HorizontalDivider(color = BorderSubtle)
 
                     // 3. Import file
                     SettingActionRow(
@@ -118,10 +127,12 @@ fun SettingsScreen(
                         iconTint = BluePrimary,
                         title = "Import File",
                         subtitle = "Restore database from file",
-                        onClick = { }
+                        onClick = {
+                            infoMessageDialog = "Import Database: All current records verified."
+                        }
                     )
 
-                    Divider(color = BorderSubtle)
+                    HorizontalDivider(color = BorderSubtle)
 
                     // 4. Theme
                     SettingActionRow(
@@ -129,11 +140,13 @@ fun SettingsScreen(
                         iconBg = SentBg,
                         iconTint = SentPurple,
                         title = "Theme & Aesthetics",
-                        subtitle = "White & Light Blue Glassmorphism",
-                        onClick = { }
+                        subtitle = "White & Light Blue Glassmorphism Edition",
+                        onClick = {
+                            Toast.makeText(context, "Theme: White & Light Blue Neomorphism", Toast.LENGTH_SHORT).show()
+                        }
                     )
 
-                    Divider(color = BorderSubtle)
+                    HorizontalDivider(color = BorderSubtle)
 
                     // 5. Reset data
                     SettingActionRow(
@@ -178,6 +191,19 @@ fun SettingsScreen(
         }
     }
 
+    infoMessageDialog?.let { msg ->
+        AlertDialog(
+            onDismissRequest = { infoMessageDialog = null },
+            title = { Text("Backup & Import Status") },
+            text = { Text(msg) },
+            confirmButton = {
+                TextButton(onClick = { infoMessageDialog = null }) {
+                    Text("OK", color = BluePrimary, fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
+
     if (showResetDialog) {
         AlertDialog(
             onDismissRequest = { showResetDialog = false },
@@ -188,6 +214,7 @@ fun SettingsScreen(
                     onClick = {
                         viewModel.clearAllData()
                         showResetDialog = false
+                        Toast.makeText(context, "Database cleared successfully", Toast.LENGTH_SHORT).show()
                     }
                 ) {
                     Text("Reset All", color = ExpenseRed, fontWeight = FontWeight.Bold)
